@@ -5,7 +5,6 @@ require 'cinch'
 
 #plugins
 require_relative 'plugins/hello.rb'
-require_relative 'plugins/dice.rb'
 require_relative 'plugins/dance.rb'
 
 bot = Cinch::Bot.new do
@@ -13,7 +12,7 @@ bot = Cinch::Bot.new do
     c.server = "irc.otherworlders.org"
     c.channels = ["#igor_dev"]
     c.nick = "igor_dev"
-    c.plugins.plugins = [Hello, Dice, Dance]
+    c.plugins.plugins = [Hello, Dance]
     c.plugins.prefix = ""
     
     @admin = ["papaganoush"]
