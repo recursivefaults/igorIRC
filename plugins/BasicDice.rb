@@ -8,10 +8,9 @@ class ModifierHandler
   def initialize
     @modifier = 0
     @match = /\(([^\)]*)\)/
-    @arithmaticStack = []
   end
   
-  def handleModifier(input)
+  def handle_modifier(input)
     if (input =~ @match) == nil
       return 0
     else
@@ -27,86 +26,132 @@ class ModifierHandler
   end    
 end
 class BasicDice
-  attr_accessor :expression, :sign, :display, :total, :match, :numDice, :numSides
+  attr_accessor :expression, :sign, :display, :total, :match, :num_dice, :num_sides
   def initialize()
     @modifier = 0
     @expression = ""
     @sign = 1
     @display = ""
     @total = 0
-    @numDice = 1
-    @numSides = 0
+    @num_dice = 1
+    @num_sides = 0
     @match = /(\d)*[dD](\d)+/
   end
   
-  def handleModifier(expression)
+  def handle_modifier(expression)
     modHandler = ModifierHandler.new
-    @modifier = modHandler.handleModifier(expression)
+    @modifier = modHandler.handle_modifier(expression)
   end
   
-  def supportsRoll(expression)
-    if (expression =~ match) == nil
+  def supports_roll(expression)
+    if (expression =~ @match) == nil
       return false
     else
-      expression.scan(match) {|@numDice, @numSides|}
-      @numDice = @numDice.to_i
-      @numSides = @numSides.to_i
-      handleModifier(expression)
+      expression.scan(@match) {|@num_dice, @num_sides|}
+      @num_dice = @num_dice.to_i
+      @num_sides = @num_sides.to_i
+      handle_modifier(expression)
       
-      if @numDice == nil
-        @numDice = 1
+      if @num_dice == nil
+        @num_dice = 1
       end
     end
     return true
   end
   
   def roll(modifier = 0)
-    srand()
-    if @numSides == 0
+
+    if @num_sides == 0
       return
     end
-    for i in 0...@numDice
-      r = rand(@numSides) + 1
+    for i in 0...@num_dice
+      srand()
+      r = rand(@num_sides) + 1
       @display << "#{r}"
       @total += r
-      if i < @numDice-1
+      if i < @num_dice-1
         @display << " + "
       end
     end
-    if modifier > 0
-      @total += modifier
-      @display <<  "+ #{@modifier}"
+    append_modifier
+  end
+  def append_modifier
+    if @modifier > 0
+      @total += @modifier
+      @display << " + #{@modifier}"
     end
+  end
+  def append_total
+    @display << " = #{@total}"
   end
 end
 
 class FudgeDice < BasicDice
-  def initizlize()
+  def initialize()
     super
-    @match = /(\d)*[dD]([fF])/
+    @match = /(\d)*[dD][fF]/
   end
   
-  def supportsRole(expressions)
-    if (expression =~ match) == nil
+  def supports_roll(expression)
+    if (expression =~ @match) == nil
       return false
     else
-      handleModifier(expression)
-      expression.scan(match) {|@numDice|}
-      if @numDice == nil
-        @numDice = 1
+      handle_modifier(expression)
+      expression.scan(@match) {|@num_dice|}
+      if @num_dice == nil || @num_dice[0] == nil
+        @num_dice = 1
+      else
+        @num_dice = @num_dice[0].to_i
       end
     end
+    return true
   end
   
   def roll(modifier = 0)
-    
+    for i in 0...@num_dice
+      srand()
+      r = rand(3)
+      case r        
+        when 2
+          @total += 1
+          @display << "[+]"
+        when 1
+          @display << "[ ]"
+        when 0
+          @total += -1
+          @display << "[-]"
+        end
+      if i != @num_dice -1
+        @display << " "
+      end
+    end
+    append_modifier
+    append_total
   end
-  
 end
 
 require "test/unit"
 
 class TestLibraryFileName < Test::Unit::TestCase
+  def test_HandleModifier1
+    m = ModifierHandler.new
+    assert(m.handle_modifier("(4+5)") == 9, "Failed to handle simple modifier")
+    
+  end
+  def test_HandleModifier2
+    m = ModifierHandler.new
+    assert(m.handle_modifier("(5)") == 5, "Failed to handle simple modifier")
+    
+  end
+  def test_HandleModifier3
+    m = ModifierHandler.new
+    assert(m.handle_modifier("(-5)") == -5, "Failed to handle simple modifier")
+  end
+  def test_HandleModifier4
+    m = ModifierHandler.new
+    assert(m.handle_modifier("(-a)") == 0, "Failed to handle simple modifier")
+  end
+  
   def testBaseDice1
     d = BasicDice.new
     d.roll
@@ -115,61 +160,72 @@ class TestLibraryFileName < Test::Unit::TestCase
   
   def test_BasicDice2
     d = BasicDice.new
-    d.numDice = 3
-    d.numSides = 6
+    d.num_dice = 3
+    d.num_sides = 6
     d.roll
     assert(d.total >= 1, "Failure message.")
   end
   
   def test_BasicDice3
     d = BasicDice.new
-    assert(d.supportsRoll("4d6(3-1)"), "Failed to support good die expression: 4d6")
+    assert(d.supports_roll("4d6(3-1)"), "Failed to support good die expression: 4d6")
   end
   
   def test_BasicDice4
     d = BasicDice.new
-    assert(d.supportsRoll("d6"), "Failed to support good die expression: d6")
+    assert(d.supports_roll("d6"), "Failed to support good die expression: d6")
   end
 
   def test_BasicDice5
     d = BasicDice.new
-    assert(!d.supportsRoll("ad6"), "Accepting bad expression: ad6")
+    assert(!d.supports_roll("ad6"), "Accepting bad expression: ad6")
   end
 
   def test_BasicDice5
     d = BasicDice.new
-    assert(d.supportsRoll("4D6"), "Failed to support good die expression: 4D6")
+    assert(d.supports_roll("4D6"), "Failed to support good die expression: 4D6")
   end
   def test_BasicDice6
     d = BasicDice.new
-    assert(!d.supportsRoll("4D"), "Accepting bad expression: 4D")
+    assert(!d.supports_roll("4D"), "Accepting bad expression: 4D")
   end
   def test_BasicDice7
     d = BasicDice.new
-    assert(d.supportsRoll("4D6"), "Failed to support good die expression: 4D6")
+    assert(d.supports_roll("4D6"), "Failed to support good die expression: 4D6")
     d.roll
     assert(d.total >= 1, "We didn't roll for some reason")
   end
   
-  def test_HandleModifier1
-    m = ModifierHandler.new
-    assert(m.handleModifier("(4+5)") == 9, "Failed to handle simple modifier")
-    
+  def test_FudgeDice1
+    d = FudgeDice.new
+    assert(d.supports_roll("df"), "Failed to support valid fudge roll (df)")
+    d.roll
+    assert(d.display != "", "Empty display, failed to roll.")
+    puts("Fudge Test 1: #{d.display}")
   end
-  def test_HandleModifier2
-    m = ModifierHandler.new
-    assert(m.handleModifier("(5)") == 5, "Failed to handle simple modifier")
-    
+  def test_FudgeDice2
+    d = FudgeDice.new
+    assert(d.supports_roll("2Df"), "Failed to support valid fudge roll (2df)")
+    d.roll
+    assert(d.display != "", "Empty display, failed to roll.")
+    puts("Fudge Test 2: #{d.display}")
   end
-  def test_HandleModifier3
-    m = ModifierHandler.new
-    assert(m.handleModifier("(-5)") == -5, "Failed to handle simple modifier")
+  def test_FudgeDice3
+    d = FudgeDice.new
+    assert(d.supports_roll("4dF"), "Failed to support valid fudge roll (2df)")
+    d.roll
+    assert(d.display != "", "Empty display, failed to roll.")
+    puts("Fudge Test 3: #{d.display}")
   end
-  def test_HandleModifier4
-    m = ModifierHandler.new
-    assert(m.handleModifier("(-a)") == 0, "Failed to handle simple modifier")
-    
+  def test_FudgeDice4
+    d = FudgeDice.new
+    assert(d.supports_roll("4DF(+3)"), "Failed to support valid fudge roll (2df)")
+    d.roll
+    assert(d.display != "", "Empty display, failed to roll.")
+    puts("Fudge Test 4: #{d.display}")
   end
+  
+
   
 
   
